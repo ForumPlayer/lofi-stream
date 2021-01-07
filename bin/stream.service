@@ -13,6 +13,7 @@ PIDFile=/root/stream/bin/ffstream.pid
 User=root
 Group=root
 Restart=always
+EnvironmentFile=/etc/environment
 
 [Install]
 WantedBy=multi-user.target
