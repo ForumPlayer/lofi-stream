@@ -92,7 +92,6 @@ if [ -n "$1" -a -z "$2" ]; then
 
     # If started with arg --overlay, init overlay function #
     if [ $1 == "--overlay" ]; then
-        sleep 5
         overlay
         exit
     fi
