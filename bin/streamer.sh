@@ -10,12 +10,8 @@ now=$(date +"%F.%H-%M-%S")
 
 
 
-
-
-
 function heartbeat(){
 #######################################################################################
-
     if [ ! -n "$HeartbeatKey" ]; then echo "HeartbeatKey is not set!"; exit; fi
     HeartbeatURL="https://heartbeat.uptimerobot.com"
     HeartbeatDelay=55
@@ -31,7 +27,6 @@ function heartbeat(){
 
 function overlay(){
 #######################################################################################
-
     while [ -f "$bin/ffstream.pid" ]; do
         echo "Now playing: $(mpc current)" > $data/OverlayText.txt
         mpc current -w > /dev/null
@@ -63,8 +58,10 @@ function stream() {
     AudioConfig="-c:a aac -ar 48000 -b:a 128k"
     OutputConfig="-r $fps -g $gop -c:v libx264 -preset ultrafast -tune zerolatency"; #-profile:v baseline"
     
-    OutputURL=$(cat OutputURL)
-    OutputKey=$(cat OutputKey)
+    #OutputURL="rtmp://live.restream.io/live"
+    OutputURL="rtmp://live.twitch.tv/app"
+    
+    if [ ! -n "$OutputKey" ]; then echo "OutputKey is not set! Can't start streaming"; exit; fi
 
     ffOutput="-f flv $OutputURL/$OutputKey"
     echo "$$" > $bin/ffstream.pid
