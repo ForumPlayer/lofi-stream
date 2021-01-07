@@ -25,7 +25,6 @@ function heartbeat(){
         sleep $HeartbeatDelay
     done
 #######################################################################################
-
 }
 
 
@@ -34,28 +33,10 @@ function overlay(){
 #######################################################################################
 
     while [ -f "$bin/ffstream.pid" ]; do
-        echo "Now playing: $(mpc current)" > OverlayText.txt
-        #screen -dmS "render-overlay" $0 --render-overlay
+        echo "Now playing: $(mpc current)" > $data/OverlayText.txt
         mpc current -w > /dev/null
     done
 #######################################################################################
-
-}
-
-
-
-function render-overlay(){
-#######################################################################################
-
-    ffmpeg=$(which ffmpeg)
-    logfile=$logs/ffoverlay.err.$now.log
-	echo "Now playing: $(mpc current)" > OverlayText.txt
-    $ffmpeg -y -loglevel error -i background.src.gif -vf "drawtext=textfile=OverlayText.txt:x=50:y=50:fontsize=24:fontcolor=white" -c:a copy background.tmp.gif 2>$logfile
-    cp background.tmp.gif background.gif
-    rm background.tmp.gif OverlayText.txt
-    if [ ! -s  $logfile ]; then rm $logfile; fi
-#######################################################################################
-
 }
 
 
@@ -63,30 +44,25 @@ function render-overlay(){
 function stream() {
 #######################################################################################
 
-
     ffmpeg=$(which ffmpeg)
 
     VideoSourceURI="$(realpath background.gif)"
     AudioSourceURI="http://127.0.0.1:4887"
-    #OverlaySourceURI="$(realpath OverlayText.txt)"
-    OverlaySourceURI="$(realpath overlay.png)"
-
+    OverlaySourceURI="$(realpath OverlayText.txt)"
+    
     VideoSource="-re -f gif -i $VideoSourceURI"
     AudioSource="-f ogg -i $AudioSourceURI"
-    #OverlaySource="-f png_pipe -i $OverlaySourceURI"
     fps=15
     gop=$((fps*2))
 
     scale="1280:720"
     #scale="852:480"
 
-    VideoConfig="-filter_complex realtime,scale=$scale,format=yuv420p"
+    #VideoConfig="-filter_complex realtime,scale=$scale,format=yuv420p"
+    VideoConfig="-vf realtime,scale=$scale,format=yuv420p,drawtext=textfile='$OverlaySourceURI':x=50:y=50:fontsize=24:fontcolor=white:reload=1"
     AudioConfig="-c:a aac -ar 48000 -b:a 128k"
     OutputConfig="-r $fps -g $gop -c:v libx264 -preset ultrafast -tune zerolatency"; #-profile:v baseline"
-    #OverlayConfig="-filter_complex [0:v][1:v]overlay=0:0[0:v] -c:a copy"
-    #OverlayConfig="-filter_complex [0:v]drawtext=textfile='$OverlaySourceURI':x=50:y=50:fontsize=24:fontcolor=white:reload=1[0:v]"; #-filter_complex [1:v]overlay='x=0:y=0'[0:v]"
-    #OverlayConfig="-vf drawtext=textfile='$OverlaySourceURI':x=50:y=50:fontsize=24:fontcolor=white:reload=1"
-
+    
     OutputURL=$(cat OutputURL)
     OutputKey=$(cat OutputKey)
 
@@ -94,7 +70,9 @@ function stream() {
     echo "$$" > $bin/ffstream.pid
 
     mkdir -p $logs
-    $ffmpeg -hide_banner -stream_loop -1 $VideoSource $OverlaySource -thread_queue_size 1024 $AudioSource $VideoConfig $OverlayConfig $OutputConfig $AudioConfig $ffOutput |& tee -a $logs/ffstream.$now.log
+
+    $ffmpeg -hide_banner -stream_loop -1 $VideoSource -thread_queue_size 1024 $AudioSource \
+    $VideoConfig $OutputConfig $AudioConfig $ffOutput |& tee -a $logs/ffstream.$now.log
 
     rm $bin/ffstream.pid
 #######################################################################################
@@ -122,9 +100,9 @@ if [ -n "$1" -a -z "$2" ]; then
         exit
     fi
 
-    # If started with arg --render-overlay, render overlay and apply on stream #
-    if [ $1 == "--render-overlay" ]; then
-        render-overlay
+    # If started with arg --refresh-overlay, refresh overlay text #
+    if [ $1 == "--refresh-overlay" ]; then
+        echo "Now playing: $(mpc current)" > $data/OverlayText.txt
         exit
     fi
 
@@ -133,11 +111,10 @@ fi
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
 if ! [ -f "$bin/ffstream.pid" ]; then
      $streamer --heartbeat &
-     #$streamer --overlay &
+     $streamer --overlay &
      stream
 fi
 #######################################################################################
 #######################################################################################
-
 
 exit
