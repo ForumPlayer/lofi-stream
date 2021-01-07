@@ -1,0 +1,18 @@
+[Unit]
+Description=Stream Service
+After=network.target
+
+[Service]
+Type=forking
+
+ExecStart=/root/stream/bin/service.sh start
+ExecStop=/root/stream/bin/service.sh stop
+ExecReload=/root/stream/bin/service.sh restart
+PIDFile=/root/stream/bin/ffstream.pid
+
+User=root
+Group=root
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
