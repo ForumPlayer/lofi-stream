@@ -3,27 +3,33 @@
 function configs(){
 ###############################################################################################################################################
 
-    scale="1280:720"
-    #scale="852:480"
-    fps=15
+    scale="${scale:-"1280:720"}"
+    #scale="${scale:-"852:480"}"
+    fps="${fps:-15}"
+    
+    
 
-    OutputURL="rtmp://live.restream.io/live"
-    #OutputURL="rtmp://live.twitch.tv/app"
-    OutputKey="re_2952643_63bc41f0b45206d20ab2"
+    OutputURL="${OutputURL:-"rtmp://live.twitch.tv/app"}"
+    
+    #OutputKey=""
+
+    if [[ $dev == "yes" || $dev == "true" ]]; then OutputURL="rtmp://live.restream.io/live"; fi
+    if [[ $fifo == "yes" || $fifo == "true" ]]; then AudioSourceURI="/tmp/mpd.fifo"; AudioFormat="s16le"; fi
+
     
 ###############################################################################################################################################
 }
 
 
 
-
-
 function checkdeps(){
 ###############################################################################################################################################
     fail="no"
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
     if [ ! -n "$(which ffmpeg)" ]; then echo "FFmpeg is not installed!"; fail="yes"; fi
     if [ ! -n "$(which mpd)" ]; then echo "MPD is not installed!"; fail="yes"; fi
     if [ ! -n "$(which mpc)" ]; then echo "MPC is not installed!"; fail="yes"; fi
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
     if [ $fail == "yes" ]; then echo "Can't start streaming"; exit 1; fi
 ###############################################################################################################################################
 }
@@ -31,16 +37,18 @@ function checkdeps(){
 function setup-stream() {
 ###############################################################################################################################################
     configs
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
     gop=$((fps*2))
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
-    VideoSourceURI="$(realpath background.gif)"
-    #AudioSourceURI="http://127.0.0.1:4887"
-    AudioSourceURI="/tmp/mpd.fifo"
-    OverlaySourceURI="$(realpath $data/OverlayText.txt)"
+    VideoSourceURI="${VideoSourceURI:-"$(realpath background.gif)"}"
+    AudioSourceURI="${AudioSourceURI:-"http://127.0.0.1:4887"}"
+    OverlaySourceURI="${OverlaySourceURI:-"$(realpath "$data/OverlayText.txt")"}"
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
-    VideoSource="-re -f gif -i $VideoSourceURI"
-    #AudioSource="-f ogg -i $AudioSourceURI"
-    AudioSource="-f s16le -i $AudioSourceURI"
+    VideoFormat="${VideoFormat:-"gif"}"
+    AudioFormat="${AudioFormat:-"ogg"}"
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
+    VideoSource="-re -f $VideoFormat -i $VideoSourceURI"
+    AudioSource="-f $AudioFormat -i $AudioSourceURI"
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
     #VideoConfig="-filter_complex realtime,scale=$scale,format=yuv420p"
     VideoConfig="-vf realtime,scale=$scale,format=yuv420p,drawtext=textfile='$OverlaySourceURI':x=50:y=50:fontsize=24:fontcolor=white:reload=1"
@@ -54,7 +62,7 @@ function overlay(){
 ###############################################################################################################################################
     sleep 1
     while [ -n "$(pidof ffmpeg)" ]; do
-        echo "Now playing: $(mpc current)" > $data/OverlayText.txt
+        echo "Now playing: $(mpc current)" > "$data/OverlayText.txt"
         mpc current -w > /dev/null
     done
 ###############################################################################################################################################
@@ -62,15 +70,16 @@ function overlay(){
 
 function stream() { 
 ###############################################################################################################################################
+    checkvars
     ffmpeg=$(which ffmpeg)
-
-    if [ ! -n "$OutputKey" ]; then echo "OutputKey is not set! Can't start streaming"; exit 1; fi
-
-    mkdir -p $logs
-    echo "$$" > $bin/ffstream.pid
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
+    mkdir -p "$logs"
+    echo "$$" > "$pidfile"
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
     $ffmpeg -hide_banner -stream_loop -1 $VideoSource -thread_queue_size 1024 $AudioSource $VideoConfig \
-    $OutputConfig $AudioConfig -f flv $OutputURL/$OutputKey |& tee -a $logs/ffstream.$now.log
-    rm $bin/ffstream.pid
+    $OutputConfig $AudioConfig -f flv $OutputURL/$OutputKey |& tee -a "$logs/ffstream.$now.log"
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
+    rm "$pidfile"
 ###############################################################################################################################################
 }
 
@@ -78,57 +87,58 @@ function checkvars(){
 ###############################################################################################################################################
     fail="no"
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
-    if [ ! -n "$VideoSourceURI" ]; then echo " is not set!"; fail="yes"; fi
-    if [ ! -n "$AudioSourceURI" ]; then echo " is not set!"; fail="yes"; fi
-    if [ ! -n "$OverlaySourceURI" ]; then echo " is not set!"; fail="yes"; fi
+    if [ ! -n "$VideoSourceURI" ]; then echo "VideoSourceURI is not set!"; fail="yes"; fi
+    if [ ! -n "$AudioSourceURI" ]; then echo "AudioSourceURI is not set!"; fail="yes"; fi
+    if [ ! -n "$OverlaySourceURI" ]; then echo "OverlaySourceURI is not set!"; fail="yes"; fi
     if [ ! -n "$OutputURL" ]; then echo "OutputURL is not set!"; fail="yes"; fi
+    if [ ! -n "$OutputKey" ]; then echo "OutputKey is not set!"; fail="yes"; fi
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
-    if [ $fail =="yes" ]; then echo "Can't start streaming"; exit 1; fi
+    if [ $fail == "yes" ]; then echo "Can't start streaming"; exit 1; fi
 ###############################################################################################################################################
 }
 
 
 
-runtime=$(realpath $0)
+runtime="$(realpath "$0")"
 
-bin=$(realpath $0)
-bin=${bin%/*}
+bin="$(realpath "$0")"
+bin="${bin%/*}"
 
-data=$(realpath $bin/../data)
-logs=$(realpath $bin/../logs)
-cd $data
+data="$(realpath "$bin/../data")"
+logs="$(realpath "$bin/../logs")"
+cd "$data"
 
 pidfile="$bin/ffstream.pid"
 now=$(date +"%F.%H-%M-%S")
 
+checkdeps
 
 
 ##############################################################################################################################################
 
     if [ -n "$1" -a -z "$2" ]; then
-        checkdeps
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
 
-        # If started with arg --heartbeat, init heartbeat function #
-        if [ $1 == "--stream" ]; then
-            setup-stream
-            stream
-            exit
-        fi
-
-#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
-
-        # If started with arg --overlay, init overlay function #
-        if [ $1 == "--overlay" ]; then
-    	    configs
-            overlay
-            exit
-        fi
+#//!        # If started with arg --heartbeat, init heartbeat function #
+#//!        if [ $1 == "--stream" ]; then
+#//!            setup-stream
+#//!            stream
+#//!            exit
+#//!        fi
+#//!
+#//!#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
+#//!
+#//!        # If started with arg --overlay, init overlay function #
+#//!        if [ $1 == "--overlay" ]; then
+#//!    	    configs
+#//!            overlay
+#//!            exit
+#//!        fi
     
         # If started with arg --refresh-overlay, refresh overlay text #
         if [ $1 == "--refresh-overlay" ]; then
-            echo "Now playing: $(mpc current)" > $data/OverlayText.txt
+            echo "Now playing: $(mpc current)" > "$data/OverlayText.txt"
             exit
         fi
 
@@ -136,17 +146,14 @@ now=$(date +"%F.%H-%M-%S")
     fi
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=#
     
-    if [ ! -f $pidfile ]; then
+    if [ ! -f "$pidfile" ]; then
+        configs
         overlay &
-        #$runtime --overlay &
         setup-stream
         stream
-        #$runtime --stream
     fi
 
 ###############################################################################################################################################
-
-
 
 
 echo "end"
