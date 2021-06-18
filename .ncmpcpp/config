@@ -1,0 +1,12 @@
+mpd_music_dir = "/mpd/music"
+user_interface = "alternative"
+enable_window_title = "yes"
+mouse_list_scroll_whole_page = "no"
+cyclic_scrolling = "yes"
+store_lyrics_in_song_dir = "yes"
+#ncmpc_like_songs_adding = "yes"
+
+
+########################################
+allow_for_physical_item_deletion = "yes"
+########################################
