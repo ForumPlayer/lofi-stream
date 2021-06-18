@@ -1,3 +1,4 @@
+.vscode
 *.pid
 logs/
 OverlayText.txt
