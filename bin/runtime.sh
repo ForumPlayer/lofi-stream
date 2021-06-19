@@ -60,6 +60,7 @@ function setup-stream() {
 
 function overlay(){
 ###############################################################################################################################################
+    touch "$data/OverlayText.txt"
     sleep 1
     while [ -n "$(pidof ffmpeg)" ]; do
         echo "Now playing: $(mpc current)" > "$data/OverlayText.txt"
