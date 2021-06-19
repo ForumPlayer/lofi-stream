@@ -1,19 +1,18 @@
-FROM alpine:latest
+FROM debian:stable-slim
 LABEL maintainer="ForumPlayer"
 
 EXPOSE 4887/tcp
 EXPOSE 6600/tcp
 
-RUN mkdir /mpd
-RUN adduser -D -h /mpd mpd
+RUN useradd -u 106 -g 29 -d /mpd -N mpd
 
-RUN apk add htop nano mpd mpc ncmpcpp bash ffmpeg
-RUN setcap -r /usr/bin/mpd
+RUN apt update && apt install htop nano mpd mpc ncmpcpp ffmpeg -y                                                                                                                                                  
+RUN mkdir -p /run/mpd && chown -cR mpd:audio /run/mpd                                                                                                                                                              
 
 WORKDIR /mpd
 COPY . /mpd
 
-RUN chown -cR mpd:mpd /mpd
+RUN chown -cR mpd:audio /mpd
 RUN mv mpd.conf /etc/mpd.conf
 RUN chmod +x /mpd/bin/*
 
