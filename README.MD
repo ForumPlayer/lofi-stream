@@ -1,4 +1,4 @@
-## lofi-stream
+# lofi-stream
 Scripts to run a music stream on some streaming platforms
 
 [![Github Issues](https://img.shields.io/github/issues/ForumPlayer/lofi-stream)](https://github.com/ForumPlayer/lofi-stream/issues)
@@ -7,8 +7,6 @@ Scripts to run a music stream on some streaming platforms
 [![Docker Stars](https://img.shields.io/docker/stars/forumplayer/lofi-stream)](https://hub.docker.com/repository/docker/forumplayer/lofi-stream/)
 [![Github Build](https://img.shields.io/github/workflow/status/ForumPlayer/lofi-stream/Docker)](https://github.com/ForumPlayer/lofi-stream/actions/workflows/docker-publish.yml)
 [![Docker Build](https://img.shields.io/docker/cloud/build/forumplayer/lofi-stream)](https://hub.docker.com/repository/docker/forumplayer/lofi-stream/builds)
-
- 
 ###  License
 This project is licensed under GPL v3 . See the [LICENSE](LICENSE.md) file for more
 details.
